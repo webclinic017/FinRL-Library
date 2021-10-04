@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from copy import deepcopy
 
-from finrl.data_preprocessor.yahoodownloader import YahooDownloader
-from finrl.data_preprocessor.config import config
+from finrl.neo_finrl.preprocessor.yahoodownloader import YahooDownloader
+from finrl.apps import config
 
 
 def get_daily_return(df, value_col_name="account_value"):
@@ -49,13 +49,18 @@ def backtest_plot(
 ):
 
     df = deepcopy(account_value)
+    df["date"] = pd.to_datetime(df["date"])
     test_returns = get_daily_return(df, value_col_name=value_col_name)
 
     baseline_df = get_baseline(
         ticker=baseline_ticker, start=baseline_start, end=baseline_end
     )
-
+    
+    baseline_df['date'] = pd.to_datetime(baseline_df['date'], format="%Y-%m-%d")
+    baseline_df = pd.merge(df[['date']], baseline_df, how='left', on='date')
+    baseline_df = baseline_df.fillna(method='ffill').fillna(method='bfill')
     baseline_returns = get_daily_return(baseline_df, value_col_name="close")
+   
     with pyfolio.plotting.plotting_context(font_scale=1.1):
         pyfolio.create_full_tear_sheet(
             returns=test_returns, benchmark_rets=baseline_returns, set_context=False
