@@ -1,6 +1,7 @@
 import datetime
 import threading
-from neo_finrl.data_processors.processor_alpaca import AlpacaProcessor
+from finrl.neo_finrl.data_processors.processor_alpaca import AlpacaProcessor
+from elegantrl.run import *
 import alpaca_trade_api as tradeapi
 import time
 import pandas as pd
@@ -19,18 +20,17 @@ class AlpacaPaperTrading():
         #load agent
         self.drl_lib = drl_lib
         if agent =='ppo':
-            
-            if drl_lib == 'elegantrl':
-                from elegantrl.agent import AgentPPO
-                
-                try:
-                    agent = AgentPPO()
-                    agent.init(net_dim, state_dim, action_dim)
-                    agent.save_load_model(cwd=cwd, if_save=False)
-                    self.act = agent.act
-                    self.device = agent.device
-                except:
-                    raise ValueError('Fail to load the agent! Please check path, state dimension and action_dimension.')
+            if drl_lib == 'elegantrl':              
+              from elegantrl.agent import AgentPPO
+              #load agent
+              try:
+                  agent = AgentPPO()
+                  agent.init(net_dim, state_dim, action_dim)
+                  agent.save_or_load_agent(cwd=cwd, if_save=False)
+                  self.act = agent.act
+                  self.device = agent.device
+              except:
+                  raise ValueError('Fail to load agent!')
             
             elif drl_lib == 'rllib':
                 from ray.rllib.agents import ppo
@@ -95,7 +95,7 @@ class AlpacaPaperTrading():
         
         #initialize account
         self.stocks = np.asarray([0] * len(ticker_list)) #stocks holding
-        self.stocks_cd = np.zeros_like(self.stocks)
+        self.stocks_cd = np.zeros_like(self.stocks) 
         self.cash = None #cash record 
         self.stocks_df = pd.DataFrame(self.stocks, columns=['stocks'], index = ticker_list)
         self.asset_list = []
@@ -104,7 +104,7 @@ class AlpacaPaperTrading():
         self.turbulence_bool = 0
         self.equities = []
         
-    def test_latency(self, test_times = 10):
+    def test_latency(self, test_times = 10): 
         total_time = 0
         for i in range(0, test_times):
             time0 = time.time()
@@ -266,7 +266,7 @@ class AlpacaPaperTrading():
         
         
         
-        amount = np.array(max(self.cash, 1e4) * (2 ** -12), dtype=np.float32)
+        amount = np.array(self.cash * (2 ** -12), dtype=np.float32)
         scale = np.array(2 ** -6, dtype=np.float32)
         state = np.hstack((amount,
                     turbulence,
