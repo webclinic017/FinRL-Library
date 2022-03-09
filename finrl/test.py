@@ -1,35 +1,39 @@
 import ray
+
 from finrl.apps.config import (
-    DOW_30_TICKER,
     TECHNICAL_INDICATORS_LIST,
     TEST_END_DATE,
     TEST_START_DATE,
     RLlib_PARAMS,
 )
-from finrl.neo_finrl.env_stock_trading.env_stocktrading import StockTradingEnv
+
+from finrl.apps.config_tickers import (
+    DOW_30_TICKER,
+)
+
+from finrl.finrl_meta.env_stock_trading.env_stocktrading import StockTradingEnv
 
 
 def test(
-    start_date,
-    end_date,
-    ticker_list,
-    data_source,
-    time_interval,
-    technical_indicator_list,
-    drl_lib,
-    env,
-    model_name,
-    if_vix=True,
-    **kwargs
+        start_date,
+        end_date,
+        ticker_list,
+        data_source,
+        time_interval,
+        technical_indicator_list,
+        drl_lib,
+        env,
+        model_name,
+        if_vix=True,
+        **kwargs
 ):
-
     # import DRL agents
     from finrl.drl_agents.stablebaselines3.models import DRLAgent as DRLAgent_sb3
     from finrl.drl_agents.rllib.models import DRLAgent as DRLAgent_rllib
     from finrl.drl_agents.elegantrl.models import DRLAgent as DRLAgent_erl
 
     # import data processor
-    from finrl.neo_finrl.data_processor import DataProcessor
+    from finrl.finrl_meta.data_processor import DataProcessor
 
     # fetch data
     DP = DataProcessor(data_source, **kwargs)
@@ -88,7 +92,6 @@ def test(
 
 
 if __name__ == "__main__":
-
     env = StockTradingEnv
 
     # demo for elegantrl

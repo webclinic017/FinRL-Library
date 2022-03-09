@@ -1,24 +1,21 @@
 import ray
-from finrl.drl_agents.elegantrl.models import DRLAgent as DRLAgent_erl
-from finrl.drl_agents.rllib.models import DRLAgent as DRLAgent_rllib
-from finrl.drl_agents.stablebaselines3.models import DRLAgent as DRLAgent_sb3
-from finrl.neo_finrl.data_processor import DataProcessor
+
+from finrl.finrl_meta.data_processor import DataProcessor
 
 
 def train(
-    start_date,
-    end_date,
-    ticker_list,
-    data_source,
-    time_interval,
-    technical_indicator_list,
-    drl_lib,
-    env,
-    model_name,
-    if_vix=True,
-    **kwargs
+        start_date,
+        end_date,
+        ticker_list,
+        data_source,
+        time_interval,
+        technical_indicator_list,
+        drl_lib,
+        env,
+        model_name,
+        if_vix=True,
+        **kwargs
 ):
-
     # fetch data
     DP = DataProcessor(data_source, **kwargs)
     data = DP.download_data(ticker_list, start_date, end_date, time_interval)
@@ -39,6 +36,7 @@ def train(
     cwd = kwargs.get("cwd", "./" + str(model_name))
 
     if drl_lib == "elegantrl":
+        from finrl.drl_agents.elegantrl.models import DRLAgent as DRLAgent_erl
         break_step = kwargs.get("break_step", 1e6)
         erl_params = kwargs.get("erl_params")
 
@@ -57,7 +55,7 @@ def train(
     elif drl_lib == "rllib":
         total_episodes = kwargs.get("total_episodes", 100)
         rllib_params = kwargs.get("rllib_params")
-
+        from finrl.drl_agents.rllib.models import DRLAgent as DRLAgent_rllib
         agent_rllib = DRLAgent_rllib(
             env=env,
             price_array=price_array,
@@ -83,7 +81,7 @@ def train(
     elif drl_lib == "stable_baselines3":
         total_timesteps = kwargs.get("total_timesteps", 1e6)
         agent_params = kwargs.get("agent_params")
-
+        from finrl.drl_agents.stablebaselines3.models import DRLAgent as DRLAgent_sb3
         agent = DRLAgent_sb3(env=env_instance)
 
         model = agent.get_model(model_name, model_kwargs=agent_params)
@@ -98,16 +96,16 @@ def train(
 
 
 if __name__ == "__main__":
-    from finrl.app.config import DOW_30_TICKER
-    from finrl.app.config import TECHNICAL_INDICATORS_LIST
-    from finrl.app.config import TRAIN_START_DATE
-    from finrl.app.config import TRAIN_END_DATE
-    from finrl.app.config import ERL_PARAMS
-    from finrl.app.config import RLlib_PARAMS
-    from finrl.app.config import SAC_PARAMS
+    from finrl.apps.config_tickers import DOW_30_TICKER
+    from finrl.apps.config import TECHNICAL_INDICATORS_LIST
+    from finrl.apps.config import TRAIN_START_DATE
+    from finrl.apps.config import TRAIN_END_DATE
+    from finrl.apps.config import ERL_PARAMS
+    from finrl.apps.config import RLlib_PARAMS
+    from finrl.apps.config import SAC_PARAMS
 
     # construct environment
-    from finrl.neo_finrl.env_stock_trading.env_stocktrading_np import StockTradingEnv
+    from finrl.finrl_meta.env_stock_trading.env_stocktrading_np import StockTradingEnv
 
     env = StockTradingEnv
 

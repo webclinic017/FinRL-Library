@@ -1,11 +1,16 @@
-# RL models from elegantrl
+# DRL models from ElegantRL: https://github.com/AI4Finance-Foundation/ElegantRL
 import torch
-from elegantrl.agent import AgentDDPG, AgentPPO, AgentSAC, AgentTD3, AgentA2C
-from elegantrl.run import Arguments, train_and_evaluate
+from elegantrl.agents.agent import AgentDDPG
+from elegantrl.agents.agent import AgentPPO
+from elegantrl.agents.agent import AgentSAC
+from elegantrl.agents.agent import AgentTD3
+from elegantrl.train.config import Arguments
+# from elegantrl.agents.agent import AgentA2C
+from elegantrl.train.run import train_and_evaluate, init_agent
 
-MODELS = {"ddpg": AgentDDPG, "td3": AgentTD3, "sac": AgentSAC, "ppo": AgentPPO, "a2c": AgentA2C}
+MODELS = {"ddpg": AgentDDPG, "td3": AgentTD3, "sac": AgentSAC, "ppo": AgentPPO}
 OFF_POLICY_MODELS = ["ddpg", "td3", "sac"]
-ON_POLICY_MODELS = ["ppo", "a2c"]
+ON_POLICY_MODELS = ["ppo"]
 """MODEL_KWARGS = {x: config.__dict__[f"{x.upper()}_PARAMS"] for x in MODELS.keys()}
 
 NOISE = {
@@ -15,7 +20,7 @@ NOISE = {
 
 
 class DRLAgent:
-    """Provides implementations for DRL algorithms
+    """Implementations of DRL algorithms
     Attributes
     ----------
         env: gym environment class
@@ -36,7 +41,7 @@ class DRLAgent:
         self.price_array = price_array
         self.tech_array = tech_array
         self.turbulence_array = turbulence_array
-        
+
     def get_model(self, model_name, model_kwargs):
         env_config = {
             "price_array": self.price_array,
@@ -46,15 +51,11 @@ class DRLAgent:
         }
         env = self.env(config=env_config)
         env.env_num = 1
-        agent = MODELS[model_name]()
+        agent = MODELS[model_name]
         if model_name not in MODELS:
             raise NotImplementedError("NotImplementedError")
-        model = Arguments(env, agent)
-        if model_name in OFF_POLICY_MODELS:
-            model.if_off_policy = True
-        else:
-            model.if_off_policy = False
-
+        model = Arguments(agent=agent, env=env)
+        model.if_off_policy = model_name in OFF_POLICY_MODELS
         if model_kwargs is not None:
             try:
                 model.learning_rate = model_kwargs["learning_rate"]
@@ -64,6 +65,7 @@ class DRLAgent:
                 model.net_dim = model_kwargs["net_dimension"]
                 model.target_step = model_kwargs["target_step"]
                 model.eval_gap = model_kwargs["eval_gap"]
+                model.eval_times = model_kwargs["eval_times"]
             except BaseException:
                 raise ValueError(
                     "Fail to read arguments, please check 'model_kwargs' input."
@@ -79,39 +81,24 @@ class DRLAgent:
     def DRL_prediction(model_name, cwd, net_dimension, environment):
         if model_name not in MODELS:
             raise NotImplementedError("NotImplementedError")
-        model = MODELS[model_name]()
+        agent = MODELS[model_name]
         environment.env_num = 1
-        args = Arguments(env=environment, agent=model)
-        if model_name in OFF_POLICY_MODELS:
-            args.if_off_policy = True
-        else:
-            args.if_off_policy = False
-        args.agent = model
-        args.env = environment
-        #args.agent.if_use_cri_target = True  ##Not needed for test
-
+        args = Arguments(agent=agent, env=environment)
+        args.cwd = cwd
+        args.net_dim = net_dimension
         # load agent
         try:
-            state_dim = environment.state_dim
-            action_dim = environment.action_dim
-
-            agent = args.agent
-            net_dim = net_dimension
-
-            agent.init(net_dim, state_dim, action_dim)
-            agent.save_or_load_agent(cwd=cwd, if_save=False)
+            agent = init_agent(args, gpu_id=0)
             act = agent.act
             device = agent.device
-
         except BaseException:
             raise ValueError("Fail to load agent!")
 
         # test on the testing env
         _torch = torch
         state = environment.reset()
-        episode_returns = list()  # the cumulative_return / initial_account
-        episode_total_assets = list()
-        episode_total_assets.append(environment.initial_total_asset)
+        episode_returns = []  # the cumulative_return / initial_account
+        episode_total_assets = [environment.initial_total_asset]
         with _torch.no_grad():
             for i in range(environment.max_step):
                 s_tensor = _torch.as_tensor((state,), device=device)
@@ -122,10 +109,10 @@ class DRLAgent:
                 state, reward, done, _ = environment.step(action)
 
                 total_asset = (
-                    environment.amount
-                    + (
-                        environment.price_ary[environment.day] * environment.stocks
-                    ).sum()
+                        environment.amount
+                        + (
+                                environment.price_ary[environment.day] * environment.stocks
+                        ).sum()
                 )
                 episode_total_assets.append(total_asset)
                 episode_return = total_asset / environment.initial_total_asset
